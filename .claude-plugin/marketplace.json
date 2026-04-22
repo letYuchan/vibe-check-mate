@@ -1,0 +1,13 @@
+{
+  "name": "vibe-check-mate-marketplace",
+  "owner": {
+    "name": "letYuchan"
+  },
+  "plugins": [
+    {
+      "name": "vibe-check-mate",
+      "source": "./plugins/vibe-check-mate",
+      "description": "Vibe-check your AI-assisted code: lint + typecheck + runtime error capture + AI auto-fix loop. Bundles biome presets, husky pre-commit, .check-static/.check-runtime logging, and Claude skills that perform minimal fixes from those states."
+    }
+  ]
+}

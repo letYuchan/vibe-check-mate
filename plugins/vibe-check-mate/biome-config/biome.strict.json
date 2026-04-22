@@ -1,0 +1,23 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.2.0/schema.json",
+  "extends": ["./biome.base.json"],
+  "linter": {
+    "rules": {
+      "style": {
+        "noRestrictedGlobals": {
+          "level": "error",
+          "options": {
+            "deniedGlobals": {
+              "event": "Use an explicit event parameter instead of relying on the global event object.",
+              "location": "Use an explicit navigation or URL abstraction instead of the global location object.",
+              "history": "Use a routing/navigation abstraction instead of the global history object.",
+              "name": "Avoid relying on the implicit global name binding.",
+              "top": "Avoid referencing the global top window directly.",
+              "self": "Avoid referencing the global self directly when a local reference is clearer."
+            }
+          }
+        }
+      }
+    }
+  }
+}
