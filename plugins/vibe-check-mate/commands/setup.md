@@ -44,23 +44,62 @@ chmod +x scripts/run-static-check-with-logs.sh scripts/dev-runtime.sh
 - 기존 `scripts.dev`가 있으면 `scripts.dev:raw`로 이동 (단 `dev:raw`가 이미 있으면 덮어쓰지 않음).
 - `scripts.dev` ← `"bash ./scripts/dev-runtime.sh"`.
 
-## 4-B. 브라우저 에러 reporter 주입 안내
-`public/client-error-reporter.js` 가 복사되면 사용자에게 framework 별 `<script>` 삽입 스니펫을 제공:
+## 4-B. 브라우저 에러 reporter 자동 주입 (framework 감지)
 
-- **Next.js (app router)** — `app/layout.tsx` 의 `<body>` 첫 자식으로:
-  ```tsx
-  import Script from 'next/script';
-  <Script src="/client-error-reporter.js" strategy="beforeInteractive" />
-  ```
+### Step 1. Framework 감지 (우선순위)
+1. `app/layout.tsx` 또는 `app/layout.jsx` 존재 → `target = next-app`, file = 해당 layout
+2. `pages/_document.tsx` 또는 `pages/_document.jsx` 존재 → `target = next-pages`, file = 해당 _document
+3. `app/root.tsx` 존재 AND `package.json` deps 에 `@remix-run/*` → `target = remix`, file = `app/root.tsx`
+4. 루트에 `index.html` 존재 → `target = vite-or-spa`, file = `index.html`
+5. 위 모두 해당 안 됨 → 자동 주입 skip, 아래 Step 5 fallback 으로 이동
 
-- **Vite / 순수 React SPA** — `index.html` 의 `<head>` 안:
-  ```html
+### Step 2. 주입 전 안전 검사 (Read 만, 파일 수정 전)
+대상 파일을 Read 한 뒤 아래 조건을 **모두** 만족해야 주입 진행:
+- `client-error-reporter` 문자열이 이미 포함 → **이미 주입됨, skip** (idempotent). 리포트에 "already injected" 명시.
+- 삽입 대상 opening 태그가 **정확히 1회** 나타나야 함:
+  - `next-app` / `remix` / `vite-or-spa` → `<body>` (소스에 `<body>` 가 없고 `<head>` 만 있으면 `<head>`)
+  - `next-pages` → `<Head>`
+  - 0개 → 주입 불가
+  - 2개 이상 → 모호, 주입 불가
+조건 실패 시 **Edit 호출하지 않고** Step 5 fallback 으로.
+
+### Step 3. 주입 실행 (Edit tool)
+- `old_string` = 대상 태그의 정확한 opening 라인 (원본에서 그대로 복사)
+- `new_string` = 같은 opening 라인 + 줄바꿈 + 2칸 들여쓰기된 `<script>` 태그
+- 삽입할 태그:
+  - TSX (`next-app`, `next-pages`, `remix`) → `<script src="/client-error-reporter.js" async />`
+  - HTML (`vite-or-spa`) → `<script src="/client-error-reporter.js"></script>`
+
+### Step 4. 주입 후 검증 및 롤백
+Edit 직후 같은 파일을 다시 Read:
+- `client-error-reporter` 문자열 존재 AND 태그가 올바른 위치에 있음 → 성공, 리포트에 "auto-injected to `<path>`:<line>" 기록
+- 문자열 없음 or 파일 구조가 깨져 보임 → **롤백 시도**:
+  1. 역 Edit (new_string → old_string) 로 원상 복구 시도
+  2. 역 Edit 도 실패 → 사용자에게 `git diff <file>` 확인 및 `git restore <file>` 안내
+  3. Step 5 fallback 으로
+
+### Step 5. Fallback — 수동 삽입 스니펫 제공
+자동 주입이 skip 또는 실패한 경우, 리포트 하단에 **반드시** 다음을 명시:
+
+```
+⚠️ 자동 주입 실패/skip — 이유: <구체적 원인 (태그 모호 / 파일 없음 / 롤백됨 / 이미 주입됨)>
+
+아래 스니펫을 직접 복사해서 해당 위치에 넣어주세요.
+
+[Next.js app router]  app/layout.tsx 의 <body> 바로 안:
+  <script src="/client-error-reporter.js" async />
+
+[Next.js pages router] pages/_document.tsx 의 <Head> 안:
+  <script src="/client-error-reporter.js" async />
+
+[Remix]               app/root.tsx 의 <head> 안:
+  <script src="/client-error-reporter.js" async />
+
+[Vite / 순수 SPA]      index.html 의 <head> 안:
   <script src="/client-error-reporter.js"></script>
-  ```
+```
 
-- **Remix** — `app/root.tsx` 의 `<head>` 안에 동일한 `<script>` 태그 삽입.
-
-reporter 는 `localhost`/`127.0.0.1` 접속 시에만 동작. 프로덕션 번들에서는 자동으로 no-op. 기존 framework 설정을 덮어쓰지 말고, 삽입 위치만 사용자에게 문서로 안내.
+> reporter 는 `localhost` / `127.0.0.1` 접속 시에만 동작. 프로덕션 번들에서는 no-op.
 
 ## 5. 검증
 - `pnpm run check`를 실행해 lint/typecheck 통과 시 `.check-static/`이 생성되지 않는지 확인.
