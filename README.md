@@ -11,7 +11,7 @@
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-Plugin-5A4CE0?style=flat-square)
 ![License](https://img.shields.io/badge/License-MIT-blue?style=flat-square)
 ![Stage](https://img.shields.io/badge/Stage-Alpha-orange?style=flat-square)
-![Version](https://img.shields.io/badge/Version-0.3.3-111827?style=flat-square)
+![Version](https://img.shields.io/badge/Version-0.4.0-111827?style=flat-square)
 
 </div>
 
@@ -33,7 +33,8 @@
 |---|---|
 | 🎨 **Biome 린터·포맷터 자동 세팅** | `package.json` · `tsconfig.json` · 디렉터리 구조를 분석해 React / Strict 여부 판정 → `base` / `react` / `strict` 중 **최적 preset 자동 적용** · `@biomejs/biome` 설치와 `biome.json` 구성까지 원샷 |
 | 🪝 **Husky pre-commit 훅** | 커밋 시도 → `pnpm run check` 자동 실행, 실패 시 `.check-static/` 정형 로그 3파일 |
-| 🤖 **dev server auto-kill** | Runtime 에러 패턴 감지 → 2s grace → 자동 SIGINT → `.check-runtime/` finalize |
+| 🤖 **서버 + 클라이언트 런타임 에러 통합 캡처** | 터미널 stdout/stderr 는 `tail` 로 캡처, 브라우저 `window.error` / `unhandledrejection` 은 reporter → receiver 경로로 `[CLIENT_ERROR]` 태그 붙여 동일 `runtime.log` 로 수렴. Next.js client component · React hook · DOM event · 서버 SSR / API · Express / Nest 전부 한 로그 |
+| ⚡ **dev server auto-kill** | 런타임 에러 패턴 (서버 + 클라이언트) 감지 → 2s grace → SIGINT → `.check-runtime/` finalize |
 | 🎯 **범위 강제** | `error-files.txt` ∩ 실제 수정 ∩ tracked, 3조건 교집합만 수정 · refactor / 네이밍 변경 / 신규 파일 금지 |
 | 📝 **정형 리포트** | 모든 종료 지점에 케이스별 리포트 강제 출력 (path:line + 근거) · 침묵 exit 금지 |
 | 💬 **커밋 제안** | Conventional Commits 자동 생성 → Y/수정/n 게이트 · Co-Authored-By 금지 · push 기본 금지 |
@@ -52,7 +53,11 @@ flowchart LR
   C -->|pass| E[commit 진행]
 
   F[pnpm run dev] --> G[dev-runtime.sh]
-  G --> H{runtime.log<br/>에러 패턴?}
+  G --> S[server stdout/stderr<br/>→ runtime.log]
+  G --> R[receiver on :9876<br/>browser POST]
+  BR[브라우저<br/>reporter.js] -->|window.error / unhandledrejection| R
+  R --> S
+  S --> H{에러 패턴<br/>매칭?}
   H -->|yes| I[2s grace → SIGINT]
   I --> J[.check-runtime/<br/>runtime.log · error-files.txt · meta.txt]
 
@@ -95,6 +100,8 @@ Claude Code 안에서:
 |------|------|
 | 정적 검사 래퍼 | `scripts/run-static-check-with-logs.sh` |
 | dev 런타임 캡처 + auto-kill | `scripts/dev-runtime.sh` |
+| 브라우저 에러 receiver | `scripts/client-error-receiver.py` (Python 3 필요) |
+| 브라우저 에러 reporter | `scripts/client-error-reporter.js` + `public/client-error-reporter.js` |
 | Biome preset | `biome-config/biome.{base,react,strict}.json` |
 | 루트 biome 설정 | `biome.json` (감지된 preset 으로 `extends`) |
 | pre-commit 훅 | `.husky/pre-commit` |
@@ -102,6 +109,25 @@ Claude Code 안에서:
 | devDependencies | `@biomejs/biome` · `husky` |
 
 > 권장 `.gitignore`: `.check-static/`, `.check-runtime/`
+
+### 브라우저 reporter 주입 (한 번만)
+
+`public/client-error-reporter.js` 를 `<script>` 로 로드. 프레임워크별:
+
+**Next.js (app router)** — `app/layout.tsx`:
+```tsx
+import Script from 'next/script';
+<Script src="/client-error-reporter.js" strategy="beforeInteractive" />
+```
+
+**Vite / React SPA** — `index.html`:
+```html
+<script src="/client-error-reporter.js"></script>
+```
+
+**Remix** — `app/root.tsx` 의 `<head>` 안에 동일 `<script>` 추가.
+
+reporter 는 `localhost` / `127.0.0.1` 접속 시에만 동작하고 프로덕션에서는 no-op.
 
 ---
 
@@ -171,6 +197,7 @@ runtime-auto-fix 돌려줘
 - **[husky](https://typicode.github.io/husky) 9.x** — git hook 관리 · `pre-commit` 에 `pnpm run check` 주입
 - **TypeScript 5.x** — `tsc --noEmit` 으로 타입 체크 (린트와 분리되어 이중 안전망)
 - **tsx** — 가벼운 dev 실행 런타임 (Node 기반 프로젝트용, 프레임워크 dev server 도 래핑 가능)
+- **Python 3** — 브라우저 에러 receiver 실행 (`http.server` 표준 라이브러리만 사용, 추가 pip 설치 불필요)
 - **pnpm** — 패키지 매니저 (기본, npm / yarn / bun 현재 미지원)
 - **Node.js 18+**
 - **Claude Code** — 플러그인 호스트
@@ -178,6 +205,13 @@ runtime-auto-fix 돌려줘
 ---
 
 ## Changelog
+
+### v0.4.0
+- **서버 + 클라이언트 런타임 에러 통합 캡처** — 브라우저 `window.error` / `unhandledrejection` 을 `client-error-reporter.js` 가 `localhost:9876` 의 Python receiver 로 POST, receiver 가 동일 `runtime.log` 에 `[CLIENT_ERROR]` / `[CLIENT_STACK]` 라인 append. Next.js client component · React hook · DOM event 에러도 이제 `.check-runtime/` 에 포함됨
+- `dev-runtime.sh` 가 receiver 를 자동 기동 (`python3` + `scripts/client-error-receiver.py` 존재 시), ERROR_PATTERNS 에 `\[CLIENT_ERROR\]` 추가되어 auto-kill 이 클라이언트 에러에도 발동
+- `VIBE_CLIENT_ERROR_PORT=9876` 환경 변수로 포트 커스터마이즈
+- reporter 는 `localhost` / `127.0.0.1` / `[::1]` 에서만 동작하고 프로덕션 번들에서는 no-op
+- `/vibe-check-mate:setup` 가 reporter 를 `scripts/` 와 `public/` 양쪽에 복사, framework 별 `<script>` 삽입 스니펫 리포트에 포함
 
 ### v0.3.3
 - `dev-runtime.sh` 의 background watcher / tail 에 `disown` 적용 — dev server 가 정상 종료되거나 auto-kill 이 발동할 때 bash 가 남기던 `Terminated: 15` 알림 억제

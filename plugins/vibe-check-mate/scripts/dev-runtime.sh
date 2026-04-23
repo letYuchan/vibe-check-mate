@@ -9,7 +9,8 @@ ERROR_FILES_FILE="$LOG_DIR/error-files.txt"
 # Auto-kill 설정
 AUTOKILL_GRACE="${VIBE_DEV_AUTOKILL_GRACE:-2}"      # 에러 감지 후 대기 초수 (스택트레이스 수집 여유)
 AUTOKILL_DISABLED="${VIBE_DEV_NO_AUTOKILL:-0}"      # 1로 설정 시 auto-kill 비활성화
-ERROR_PATTERNS='TypeError: |ReferenceError: |SyntaxError: |Uncaught |UnhandledPromise|Cannot find module |✘ \[ERROR\]|^Error: '
+CLIENT_ERROR_PORT="${VIBE_CLIENT_ERROR_PORT:-9876}" # 클라이언트 에러 receiver 포트
+ERROR_PATTERNS='TypeError: |ReferenceError: |SyntaxError: |Uncaught |UnhandledPromise|Cannot find module |✘ \[ERROR\]|^Error: |\[CLIENT_ERROR\]'
 
 rm -rf "$LOG_DIR"
 mkdir -p "$LOG_DIR"
@@ -31,8 +32,18 @@ echo ""
 cleanup() {
   [ -n "${TAIL_PID:-}" ] && kill "$TAIL_PID" 2>/dev/null
   [ -n "${WATCHER_PID:-}" ] && kill "$WATCHER_PID" 2>/dev/null
+  [ -n "${RECEIVER_PID:-}" ] && kill "$RECEIVER_PID" 2>/dev/null
 }
 trap 'echo ""; echo "[received SIGINT — finalizing logs...]"; cleanup' INT
+
+# 클라이언트 에러 receiver 시작 (python3 + 프로젝트에 client-error-receiver.py 존재 시)
+if [ -f "./scripts/client-error-receiver.py" ] && command -v python3 >/dev/null 2>&1; then
+  VIBE_LOG_FILE="$LOG_FILE" VIBE_CLIENT_ERROR_PORT="$CLIENT_ERROR_PORT" \
+    python3 ./scripts/client-error-receiver.py >/dev/null 2>&1 &
+  RECEIVER_PID=$!
+  disown "$RECEIVER_PID" 2>/dev/null || true
+  echo "🌐 Client error receiver: http://localhost:${CLIENT_ERROR_PORT}"
+fi
 
 # dev 서버는 log 파일로 출력
 pnpm run dev:raw > "$LOG_FILE" 2>&1 &
