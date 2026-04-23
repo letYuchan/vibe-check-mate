@@ -11,7 +11,7 @@
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-Plugin-5A4CE0?style=flat-square)
 ![License](https://img.shields.io/badge/License-MIT-blue?style=flat-square)
 ![Stage](https://img.shields.io/badge/Stage-Alpha-orange?style=flat-square)
-![Version](https://img.shields.io/badge/Version-0.4.1-111827?style=flat-square)
+![Version](https://img.shields.io/badge/Version-0.4.2-111827?style=flat-square)
 
 </div>
 
@@ -199,6 +199,10 @@ runtime-auto-fix 돌려줘
 ---
 
 ## Changelog
+
+### v0.4.2
+- **Idempotency 거짓 양성 수정** — 이전엔 `client-error-reporter` 단순 substring 매칭이라 `<code>` / 주석 / escape된 설명 텍스트에도 반응해 false-positive skip. 이제 literal `<script src="/client-error-reporter.js"` 또는 `<Script src="/client-error-reporter.js"` 같은 **실제 태그 opening** 만 감지
+- **`public/` 자동 생성** — vite-or-spa 타겟에서 `vite.config.*` 없고 framework 도 없는 plain SPA 케이스는 `index.html` 과 **같은 디렉터리**에 reporter 복사 (정적 서버가 `/client-error-reporter.js` 로 서빙 가능하게). Next / Remix / Vite 프로젝트는 `public/` 자동 생성 후 복사
 
 ### v0.4.1
 - **브라우저 reporter 자동 주입** — `/vibe-check-mate:setup` 이 framework 를 감지 (Next.js app/pages router · Remix · Vite · 순수 SPA) 하고 해당 entry 파일 (`app/layout.tsx`, `pages/_document.tsx`, `app/root.tsx`, `index.html`) 에 `<script src="/client-error-reporter.js">` 를 자동 삽입
