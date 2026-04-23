@@ -11,7 +11,7 @@
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-Plugin-5A4CE0?style=flat-square)
 ![License](https://img.shields.io/badge/License-MIT-blue?style=flat-square)
 ![Stage](https://img.shields.io/badge/Stage-Alpha-orange?style=flat-square)
-![Version](https://img.shields.io/badge/Version-0.4.4-111827?style=flat-square)
+![Version](https://img.shields.io/badge/Version-0.4.5-111827?style=flat-square)
 
 </div>
 
@@ -199,6 +199,11 @@ runtime-auto-fix 돌려줘
 ---
 
 ## Changelog
+
+### v0.4.5
+- **커스텀 `publicDir` 존중** — `vite.config.{ts,js,mjs,cjs}` 파싱해서 `publicDir: "<custom>"` 설정되어 있으면 그 경로에 reporter 복사 (없으면 생성), `publicDir: false` 면 skip + 수동 스니펫. 사용자의 vite 정적 자산 경로 설정을 덮어쓰지 않음
+- 우선순위: vite.config publicDir > framework deps (vite/next/remix) 관례값 `public/` > 루트 (plain HTML)
+- 리포트에 복사 경로 + 이유(`reason: ...`) 명시해서 사용자가 추적 가능
 
 ### v0.4.4
 - **`public/` 자동 생성 분기 보강** — 이전엔 `vite.config.*` 파일 존재만 봐서, vite deps 는 있지만 config 파일을 만들지 않은 프로젝트가 "plain SPA" 로 잘못 판정되어 reporter 가 루트에 복사되고 vite 가 404 로 서빙 실패. 이제 `package.json` 의 `vite` / `next` / `@remix-run/*` deps 도 검사해서 framework 프로젝트면 `public/` 자동 생성 후 복사
