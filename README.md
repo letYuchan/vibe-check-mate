@@ -179,6 +179,10 @@ runtime-auto-fix 돌려줘
 
 ## Changelog
 
+### v0.3.2
+- **Biome 2.x CLI 플래그 정정** — 스킬에 기록된 `biome check . --apply` 를 `biome lint --write .` 로 업데이트. Biome 2.x 에서 `--apply` 는 deprecated → 제거돼 매 setup 마다 Claude 가 불필요한 재교정 루프를 돌던 문제 해결
+- `lint` / `lint:fix` 스크립트가 `biome lint` 서브커맨드로 정렬 (`check` 스크립트와 역할 분리 명확)
+
 ### v0.3.1
 - `runtime-auto-fix` 수정 성공 시 `.check-runtime/` **자동 삭제** (static 쪽과 대칭)
 

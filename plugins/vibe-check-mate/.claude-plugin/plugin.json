@@ -1,6 +1,6 @@
 {
   "name": "vibe-check-mate",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Vibe-check your AI-assisted code: lint + typecheck + runtime error capture + AI auto-fix. Bundles biome presets, husky pre-commit with .check-static logging, dev runtime capture to .check-runtime, and Claude skills that apply minimal fixes from those states.",
   "author": {
     "name": "letYuchan"

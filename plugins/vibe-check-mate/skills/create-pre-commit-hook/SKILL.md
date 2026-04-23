@@ -25,8 +25,8 @@ pnpm dlx husky init
 
 ## 2. package.json scripts 추가
 scripts:
-  lint: biome check .
-  lint:fix: biome check . --apply
+  lint: biome lint .
+  lint:fix: biome lint --write .
   typecheck: tsc --noEmit
   check: bash ./scripts/run-static-check-with-logs.sh
 
