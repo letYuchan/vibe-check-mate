@@ -67,6 +67,11 @@ chmod +x scripts/run-static-check-with-logs.sh
 - **검증**: `pnpm run check` 재실행 → 통과, `.check-static/` 제거됨
 - **커밋 제안**: `<제안 메시지>` — (Y/수정/n)
 
+*분할 + push 경로 진입 시 위 항목 아래에 추가*:
+- **pre-staged 커밋**: `<hash>` <메시지>
+- **fix 커밋**: `<hash>` <메시지>
+- **push**: `origin/<branch>` 완료
+
 ## 케이스 2. 수정 시도 후 check 여전히 실패
 제목: `## ❌ 수정 후에도 check 실패`
 본문 항목:
@@ -84,7 +89,7 @@ chmod +x scripts/run-static-check-with-logs.sh
 ## 케이스 4. Pre-flight 실패로 커밋 제안 생략
 제목: `## ⏸ 커밋 제안 생략`
 본문 항목:
-- **이유**: git user.name/email 미설정 / merge·rebase 진행 중 / 스테이징 충돌 중 구체적 하나
+- **이유**: git user.name/email 미설정 / merge·rebase·cherry-pick·revert 진행 중 중 구체적 하나
 - **다음 액션**: 구체 명령 (예: `git config --global user.email "..."`)
 
 ## 리포트 금지
@@ -101,10 +106,10 @@ chmod +x scripts/run-static-check-with-logs.sh
 # 커밋 제안 (check 통과 시)
 check가 통과했을 때만 커밋을 제안한다. 자동 커밋은 하지 않는다 — 반드시 사용자 확인을 받는다.
 
-## Pre-flight 검사 (모두 통과해야 제안 진행)
+## Pre-flight 검사
 1. **git 정체성 확인**: `git config user.name`, `git config user.email` 둘 다 비어있지 않아야 한다. 비면 "git user.name/email을 먼저 설정해 주세요" 안내 후 제안 중단.
-2. **git 진행 상태 확인**: `.git/MERGE_HEAD`, `.git/REBASE_HEAD`, `.git/CHERRY_PICK_HEAD`, `.git/REVERT_HEAD` 중 하나라도 존재하면 "merge/rebase/cherry-pick 진행 중에는 자동 커밋 제안을 하지 않는다" 안내 후 제안 중단.
-3. **스테이징 충돌 확인**: `git diff --cached --name-only`가 비어있지 않으면 (무관한 스테이지된 변경 존재) 제안 중단하고 사용자에게 "기존 스테이지된 변경을 먼저 커밋/unstage 해 주세요" 안내.
+2. **git 진행 상태 확인**: `.git/MERGE_HEAD`, `.git/REBASE_HEAD`, `.git/CHERRY_PICK_HEAD`, `.git/REVERT_HEAD` 중 하나라도 존재하면 안내 후 제안 중단.
+3. **스테이징 감지 → 분기**: `git diff --cached --name-only`가 비어있지 않으면 block하지 말고 아래 **"스테이징 충돌 시 자동 분할 + push"** 경로로 분기.
 
 ## 제안 절차 (pre-flight 통과 시에만)
 1. 커밋 대상 파일을 3조건 **모두** 만족하는 파일로 좁힌다:
@@ -122,16 +127,40 @@ check가 통과했을 때만 커밋을 제안한다. 자동 커밋은 하지 않
    - **메시지 수정**: 사용자가 준 메시지로 커밋
    - **n**: 커밋하지 않고 working tree를 유지한 채 종료
 
+## 스테이징 충돌 시 자동 분할 + push (Pre-flight 3번 진입)
+기존 스테이지된 변경이 존재하면 중단하지 않고 아래 절차로 **커밋 2개 분할 + push 자동 실행**.
+
+1. **pre-stage 메시지 생성**: `git diff --cached`로 변경 성격 분석 → Conventional Commits prefix 추론 (`docs/` → `docs:`, `*.test.*` → `test:`, 설정 파일 → `chore:`, 그 외 → `refactor:` / `chore:`) → 1줄 메시지 작성.
+
+2. **fix 메시지 생성**: 기존 제안 절차의 로직 그대로 (lint/typecheck 분류에 따라 `style:` / `fix:`).
+
+3. **단일 통합 제안** — 두 메시지를 한 번에 보여주고 단일 게이트:
+   ```
+   ## 🗂 커밋 분할 + push 제안
+   
+   [1/2 pre-staged] <메시지1>
+   [2/2 fix]        <메시지2>
+   
+   승인 시 위 순서로 커밋 후 git push 실행. (Y / 수정1 / 수정2 / n)
+   ```
+
+4. **응답 처리**:
+   - **Y** → `git commit -m "<1>"` (pre-stage는 이미 staged) → `git add <fix 좁혀진 목록>` → `git commit -m "<2>"` → `git push`
+   - **수정1** / **수정2** → 해당 메시지만 교체해 재확인 → Y
+   - **n** → 아무것도 실행하지 않고 종료 (stage·working tree 모두 유지)
+
+5. **push 실패 시** (네트워크·permission·no upstream 등): 케이스 2 리포트로 전환해 이유 전달, 커밋 2개는 로컬에 남김.
+
 ## 커밋 규칙
 - Co-Authored-By 추가 금지 (Claude 포함 어떤 공저자도 넣지 않는다)
 - prefix는 feat / fix / refactor / style / docs / test / chore / merge 중 의미에 맞는 것
 - 간결·명확한 메시지
-- `git push`는 절대 자동 실행하지 않는다
-- `git add -A`나 `git add .` 금지 — 반드시 좁혀진 파일 목록만 명시적으로 스테이징
+- `git push`는 **기본 자동 실행하지 않는다**. 예외: 분할 경로에서 사용자가 Y 게이트로 명시 승인한 경우만 자동 push.
+- `git add -A`나 `git add .` 금지 — 반드시 좁혀진 파일 목록만 명시적으로 스테이징. 분할 경로에서도 동일 (pre-stage는 이미 staged 상태 그대로 유지).
 
 ## 커밋 제안 생략 조건
 - check가 여전히 실패하면 제안 자체를 하지 않는다
-- pre-flight 3조건(git 정체성, 진행 상태, 스테이징 충돌) 중 하나라도 실패하면 제안하지 않는다
+- pre-flight 1·2번(git 정체성, 진행 상태) 중 하나라도 실패하면 제안하지 않는다 (스테이징 충돌은 더 이상 block 사유 아님)
 - 좁혀진 파일 목록이 비어있으면(= 실제 수정이 없었음) 제안하지 않는다
 - `error-files.txt` 밖 파일이 수정됐다면 이유 보고 후 종료
 
