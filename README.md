@@ -223,6 +223,10 @@ pnpm run dev ──► scripts/dev-runtime.sh ──► pnpm run dev:raw
 
 ## Changelog
 
+### v0.3.1
+- `runtime-auto-fix`가 수정 성공 후 `.check-runtime/` **자동 삭제** (stale 상태 방지, static 쪽과 대칭)
+- 리포트 케이스 1 본문에 `정리: .check-runtime/ 삭제됨` 라인 추가
+
 ### v0.3.0
 - **dev server 런타임 에러 auto-kill** — `dev-runtime.sh`가 `TypeError`, `ReferenceError`, `SyntaxError`, `Uncaught`, `Cannot find module`, `✘ [ERROR]` 등 에러 패턴 감지 시 2초 grace 후 자동 SIGINT 전송. 이제 `.check-runtime/`이 자동으로 finalize됨 — **dev 서버를 직접 Ctrl+C로 죽일 필요 없음**
 - `VIBE_DEV_NO_AUTOKILL=1`로 비활성화 가능, `VIBE_DEV_AUTOKILL_GRACE=<초>`로 grace 조절
