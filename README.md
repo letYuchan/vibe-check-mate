@@ -11,7 +11,7 @@
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-Plugin-5A4CE0?style=flat-square)
 ![License](https://img.shields.io/badge/License-MIT-blue?style=flat-square)
 ![Stage](https://img.shields.io/badge/Stage-Alpha-orange?style=flat-square)
-![Version](https://img.shields.io/badge/Version-0.4.0-111827?style=flat-square)
+![Version](https://img.shields.io/badge/Version-0.4.1-111827?style=flat-square)
 
 </div>
 
@@ -110,24 +110,18 @@ Claude Code 안에서:
 
 > 권장 `.gitignore`: `.check-static/`, `.check-runtime/`
 
-### 브라우저 reporter 주입 (한 번만)
+### 브라우저 reporter 주입 (v0.4.1+ 자동)
 
-`public/client-error-reporter.js` 를 `<script>` 로 로드. 프레임워크별:
+`/vibe-check-mate:setup` 이 framework 를 감지해서 entry 파일에 `<script>` 를 **자동 주입**합니다:
 
-**Next.js (app router)** — `app/layout.tsx`:
-```tsx
-import Script from 'next/script';
-<Script src="/client-error-reporter.js" strategy="beforeInteractive" />
-```
+| 감지 조건 | 주입 대상 |
+|----------|-----------|
+| `app/layout.tsx` 존재 | Next.js app router — `<body>` 안 |
+| `pages/_document.tsx` 존재 | Next.js pages router — `<Head>` 안 |
+| `app/root.tsx` + `@remix-run/*` deps | Remix — `<head>` 안 |
+| `index.html` 루트 존재 | Vite / 순수 SPA — `<head>` 안 |
 
-**Vite / React SPA** — `index.html`:
-```html
-<script src="/client-error-reporter.js"></script>
-```
-
-**Remix** — `app/root.tsx` 의 `<head>` 안에 동일 `<script>` 추가.
-
-reporter 는 `localhost` / `127.0.0.1` 접속 시에만 동작하고 프로덕션에서는 no-op.
+주입 전 중복·모호성 검사 통과해야만 실행. 실패·skip 시 framework 별 수동 스니펫을 리포트에 포함. reporter 는 `localhost` / `127.0.0.1` 에서만 동작 (프로덕션 no-op).
 
 ---
 
@@ -205,6 +199,12 @@ runtime-auto-fix 돌려줘
 ---
 
 ## Changelog
+
+### v0.4.1
+- **브라우저 reporter 자동 주입** — `/vibe-check-mate:setup` 이 framework 를 감지 (Next.js app/pages router · Remix · Vite · 순수 SPA) 하고 해당 entry 파일 (`app/layout.tsx`, `pages/_document.tsx`, `app/root.tsx`, `index.html`) 에 `<script src="/client-error-reporter.js">` 를 자동 삽입
+- 주입 전 **pre-check** (`client-error-reporter` 중복 체크, 대상 태그 정확히 1회 매칭) 통과한 경우에만 Edit 실행 — 모호하면 주입 시도조차 안 함
+- 주입 후 **검증** 실패 시 역치환으로 **롤백** 시도 → 실패하면 `git restore` 안내
+- skip / 실패 시 사용자에게 framework 별 **수동 삽입 스니펫을 리포트에 포함** (원인 + 정확한 복붙 위치까지)
 
 ### v0.4.0
 - **서버 + 클라이언트 런타임 에러 통합 캡처** — 브라우저 `window.error` / `unhandledrejection` 을 `client-error-reporter.js` 가 `localhost:9876` 의 Python receiver 로 POST, receiver 가 동일 `runtime.log` 에 `[CLIENT_ERROR]` / `[CLIENT_STACK]` 라인 append. Next.js client component · React hook · DOM event 에러도 이제 `.check-runtime/` 에 포함됨
