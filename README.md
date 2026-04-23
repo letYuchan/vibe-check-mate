@@ -112,7 +112,7 @@ AI 코딩은 **속도**를 주지만 **통제**를 잃습니다.
 |------|------|------|
 | Skills | 4 | `setup-biome-config` · `create-pre-commit-hook` · `static-auto-fix` · `runtime-auto-fix` |
 | Commands | 1 | `/vibe-check-mate:setup` — 한 방 부트스트랩 |
-| Shell scripts | 2 | `run-static-check-with-logs.sh` · `dev-runtime.sh` |
+| Shell scripts | 2 | `run-static-check-with-logs.sh` · `dev-runtime.sh` (에러 auto-kill 포함) |
 | Biome presets | 3 | base / react / strict |
 
 ---
@@ -129,15 +129,22 @@ git commit ──► .husky/pre-commit ──► pnpm run check
                                           │
               성공 시 ────────────────────►│ .check-static/ 삭제 + commit 진행
 
-pnpm run dev ──► scripts/dev-runtime.sh ──► pnpm run dev:raw + tee
+pnpm run dev ──► scripts/dev-runtime.sh ──► pnpm run dev:raw
+                                                 │
+                                       ┌─────────┼─────────┐
+                                       ▼         ▼         ▼
+                                   runtime.log  watcher   tail
+                                                 │
+                                 에러 패턴 감지 → 2s grace → SIGINT
                                                  │
                                                  ▼
-                                           .check-runtime/runtime.log
-                                           .check-runtime/error-files.txt
-                                           .check-runtime/meta.txt
+                                           .check-runtime/ finalize
+                                             (error-files.txt + meta.txt)
 ```
 
 **`.check-*/`는 "지금 실패" 스냅샷만 의미합니다.** 누적 로그가 아님. 통과하면 삭제. 스킬은 항상 최신 상태만 신뢰.
+
+**dev server auto-kill** — HMR 기반 dev server(Next.js/Vite 등)는 에러가 나도 계속 실행되는 성질이 있습니다. `dev-runtime.sh`가 터미널 로그에서 런타임 에러 패턴을 감지하면 자동으로 SIGINT를 날려 `.check-runtime/`을 finalize합니다. 사용자가 Ctrl+C를 직접 누를 필요 없음. (비활성화: `VIBE_DEV_NO_AUTOKILL=1`)
 
 ---
 
@@ -215,6 +222,11 @@ pnpm run dev ──► scripts/dev-runtime.sh ──► pnpm run dev:raw + tee
 ---
 
 ## Changelog
+
+### v0.3.0
+- **dev server 런타임 에러 auto-kill** — `dev-runtime.sh`가 `TypeError`, `ReferenceError`, `SyntaxError`, `Uncaught`, `Cannot find module`, `✘ [ERROR]` 등 에러 패턴 감지 시 2초 grace 후 자동 SIGINT 전송. 이제 `.check-runtime/`이 자동으로 finalize됨 — **dev 서버를 직접 Ctrl+C로 죽일 필요 없음**
+- `VIBE_DEV_NO_AUTOKILL=1`로 비활성화 가능, `VIBE_DEV_AUTOKILL_GRACE=<초>`로 grace 조절
+- `runtime-auto-fix` 케이스 4는 fallback으로 유지 (클라이언트 전용 에러·감지 miss·auto-kill 비활성화 케이스 대응)
 
 ### v0.2.0
 - **스테이징 충돌 시 자동 분할 + push 경로 추가** — 기존 staged 변경이 있어도 block하지 않고 2커밋 분할 + 단일 Y 게이트로 push 자동 실행
