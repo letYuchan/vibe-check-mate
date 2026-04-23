@@ -38,9 +38,10 @@ trap 'echo ""; echo "[received SIGINT — finalizing logs...]"; cleanup' INT
 pnpm run dev:raw > "$LOG_FILE" 2>&1 &
 DEV_PID=$!
 
-# 사용자 터미널에도 실시간 표시
-tail -f "$LOG_FILE" &
+# 사용자 터미널에도 실시간 표시 (disown으로 bash job table에서 제외 → 종료 시 "Terminated: 15" 알림 억제)
+tail -f "$LOG_FILE" 2>/dev/null &
 TAIL_PID=$!
+disown "$TAIL_PID" 2>/dev/null || true
 
 # Watcher: 에러 패턴 감지 시 grace period 후 auto-kill
 if [ "$AUTOKILL_DISABLED" != "1" ]; then
@@ -59,6 +60,7 @@ if [ "$AUTOKILL_DISABLED" != "1" ]; then
     done
   ) &
   WATCHER_PID=$!
+  disown "$WATCHER_PID" 2>/dev/null || true
 fi
 
 wait "$DEV_PID"

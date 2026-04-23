@@ -11,7 +11,7 @@
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-Plugin-5A4CE0?style=flat-square)
 ![License](https://img.shields.io/badge/License-MIT-blue?style=flat-square)
 ![Stage](https://img.shields.io/badge/Stage-Alpha-orange?style=flat-square)
-![Version](https://img.shields.io/badge/Version-0.3.2-111827?style=flat-square)
+![Version](https://img.shields.io/badge/Version-0.3.3-111827?style=flat-square)
 
 </div>
 
@@ -178,6 +178,9 @@ runtime-auto-fix 돌려줘
 ---
 
 ## Changelog
+
+### v0.3.3
+- `dev-runtime.sh` 의 background watcher / tail 에 `disown` 적용 — dev server 가 정상 종료되거나 auto-kill 이 발동할 때 bash 가 남기던 `Terminated: 15` 알림 억제
 
 ### v0.3.2
 - **Biome 2.x CLI 플래그 정정** — 스킬에 기록된 `biome check . --apply` 를 `biome lint --write .` 로 업데이트. Biome 2.x 에서 `--apply` 는 deprecated → 제거돼 매 setup 마다 Claude 가 불필요한 재교정 루프를 돌던 문제 해결
