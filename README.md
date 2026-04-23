@@ -11,7 +11,7 @@
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-Plugin-5A4CE0?style=flat-square)
 ![License](https://img.shields.io/badge/License-MIT-blue?style=flat-square)
 ![Stage](https://img.shields.io/badge/Stage-Alpha-orange?style=flat-square)
-![Version](https://img.shields.io/badge/Version-0.4.5-111827?style=flat-square)
+![Version](https://img.shields.io/badge/Version-0.4.6-111827?style=flat-square)
 
 </div>
 
@@ -219,6 +219,10 @@ runtime-auto-fix 돌려줘
 ---
 
 ## Changelog
+
+### v0.4.6
+- **Client-error receiver CORS 수정** — 이전엔 `Access-Control-Allow-Origin: *` 와일드카드였는데 `navigator.sendBeacon` 이 항상 credentials 를 포함해 보내서 브라우저가 preflight 거부 → reporter POST 가 전부 실패. 이제 요청의 `Origin` 헤더를 그대로 echo 하고 `Allow-Credentials: true` 를 붙여 credentialed 요청 수락. localhost 전용이라 보안 위험 없음
+- `Access-Control-Max-Age: 86400` 추가로 preflight 요청 빈도 감소
 
 ### v0.4.5
 - **커스텀 `publicDir` 존중** — `vite.config.{ts,js,mjs,cjs}` 파싱해서 `publicDir: "<custom>"` 설정되어 있으면 그 경로에 reporter 복사 (없으면 생성), `publicDir: false` 면 skip + 수동 스니펫. 사용자의 vite 정적 자산 경로 설정을 덮어쓰지 않음

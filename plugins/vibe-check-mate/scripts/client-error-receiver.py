@@ -23,9 +23,15 @@ PORT = int(os.environ.get("VIBE_CLIENT_ERROR_PORT", "9876"))
 
 class Handler(http.server.BaseHTTPRequestHandler):
     def _cors(self) -> None:
-        self.send_header("Access-Control-Allow-Origin", "*")
+        # sendBeacon includes credentials by default; wildcard ACAO is rejected
+        # when the request is credentialed. Echo the request Origin instead.
+        origin = self.headers.get("Origin", "http://localhost")
+        self.send_header("Access-Control-Allow-Origin", origin)
+        self.send_header("Access-Control-Allow-Credentials", "true")
         self.send_header("Access-Control-Allow-Methods", "POST, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_header("Access-Control-Max-Age", "86400")
+        self.send_header("Vary", "Origin")
 
     def do_OPTIONS(self) -> None:  # noqa: N802
         self.send_response(204)
