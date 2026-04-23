@@ -5,42 +5,46 @@
  *  Loads only on localhost / 127.0.0.1 / [::1].
  *  Config via window.__VIBE_CHECK_ENDPOINT__ (default http://localhost:9876).
  */
-(function () {
+(() => {
   if (typeof window === 'undefined') return;
-  var host = window.location && window.location.hostname;
+  const host = window.location?.hostname;
   if (host !== 'localhost' && host !== '127.0.0.1' && host !== '[::1]') return;
 
-  var endpoint = window.__VIBE_CHECK_ENDPOINT__ || 'http://localhost:9876';
+  const endpoint = window.__VIBE_CHECK_ENDPOINT__ || 'http://localhost:9876';
 
-  function send(kind, data) {
+  const send = (kind, data) => {
     try {
-      var body = JSON.stringify({
-        kind: kind,
-        message: (data && (data.message || String(data))) || 'unknown',
-        stack: (data && data.stack) || null,
-        file: (data && data.filename) || null,
-        line: (data && data.lineno) || null,
-        col: (data && data.colno) || null,
-        url: window.location && window.location.href,
+      const body = JSON.stringify({
+        kind,
+        message: data?.message || (data ? String(data) : 'unknown'),
+        stack: data?.stack || null,
+        file: data?.filename || null,
+        line: data?.lineno || null,
+        col: data?.colno || null,
+        url: window.location?.href,
         ts: Date.now(),
       });
 
       if (navigator.sendBeacon) {
-        var blob = new Blob([body], { type: 'application/json' });
+        const blob = new Blob([body], { type: 'application/json' });
         navigator.sendBeacon(endpoint, blob);
         return;
       }
       fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: body,
+        body,
         keepalive: true,
-      }).catch(function () {});
-    } catch (_) {}
-  }
+      }).catch(() => {
+        /* best-effort — swallow network error */
+      });
+    } catch {
+      /* best-effort — swallow serialization error */
+    }
+  };
 
-  window.addEventListener('error', function (e) {
-    var err = e.error || e;
+  window.addEventListener('error', (e) => {
+    const err = e.error || e;
     send('error', {
       message: err.message || e.message,
       stack: err.stack,
@@ -50,8 +54,8 @@
     });
   });
 
-  window.addEventListener('unhandledrejection', function (e) {
-    var reason = e.reason;
+  window.addEventListener('unhandledrejection', (e) => {
+    const reason = e.reason;
     if (reason && typeof reason === 'object') {
       send('unhandledrejection', {
         message: reason.message || String(reason),

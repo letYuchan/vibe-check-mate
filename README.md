@@ -11,7 +11,7 @@
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-Plugin-5A4CE0?style=flat-square)
 ![License](https://img.shields.io/badge/License-MIT-blue?style=flat-square)
 ![Stage](https://img.shields.io/badge/Stage-Alpha-orange?style=flat-square)
-![Version](https://img.shields.io/badge/Version-0.4.2-111827?style=flat-square)
+![Version](https://img.shields.io/badge/Version-0.4.3-111827?style=flat-square)
 
 </div>
 
@@ -199,6 +199,10 @@ runtime-auto-fix 돌려줘
 ---
 
 ## Changelog
+
+### v0.4.3
+- **`client-error-reporter.js` 를 현대 JS 로 재작성** — `var` → `const`, `function () {}` → `arrow function`, `x && x.y` → `x?.y`, empty catch 블록에 주석 추가. biome strict 룰을 **기본 통과**하도록 정비. 이전 버전에서 reporter 사본이 프로젝트에 배포되면 사용자의 biome 이 자기 preset 으로 lint 해서 실패하던 순환 제거
+- **`biome lint --max-diagnostics=1000`** 로 skill 의 package.json scripts 갱신 — 이전엔 biome 기본값 20 에 걸려 대규모 프로젝트에서 일부 진단이 로그에서 잘리고 `error-files.txt` 에 누락됨. 이제 한도 1000 으로 충분
 
 ### v0.4.2
 - **Idempotency 거짓 양성 수정** — 이전엔 `client-error-reporter` 단순 substring 매칭이라 `<code>` / 주석 / escape된 설명 텍스트에도 반응해 false-positive skip. 이제 literal `<script src="/client-error-reporter.js"` 또는 `<Script src="/client-error-reporter.js"` 같은 **실제 태그 opening** 만 감지

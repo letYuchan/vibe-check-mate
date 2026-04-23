@@ -100,8 +100,8 @@ pnpm add -D @biomejs/biome
 가능하면 다음 스크립트를 확인하고 없으면 추가한다.
 
 scripts:
-  lint: biome lint .
-  lint:fix: biome lint --write .
+  lint: biome lint . --max-diagnostics=1000
+  lint:fix: biome lint --write . --max-diagnostics=1000
 
 # 수정 규칙
 - biome-config 내부 preset 파일은 수정하지 않는다.

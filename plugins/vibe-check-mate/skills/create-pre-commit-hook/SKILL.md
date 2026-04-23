@@ -25,8 +25,8 @@ pnpm dlx husky init
 
 ## 2. package.json scripts 추가
 scripts:
-  lint: biome lint .
-  lint:fix: biome lint --write .
+  lint: biome lint . --max-diagnostics=1000
+  lint:fix: biome lint --write . --max-diagnostics=1000
   typecheck: tsc --noEmit
   check: bash ./scripts/run-static-check-with-logs.sh
 
