@@ -11,7 +11,7 @@
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-Plugin-5A4CE0?style=flat-square)
 ![License](https://img.shields.io/badge/License-MIT-blue?style=flat-square)
 ![Stage](https://img.shields.io/badge/Stage-Alpha-orange?style=flat-square)
-![Version](https://img.shields.io/badge/Version-0.4.3-111827?style=flat-square)
+![Version](https://img.shields.io/badge/Version-0.4.4-111827?style=flat-square)
 
 </div>
 
@@ -199,6 +199,9 @@ runtime-auto-fix 돌려줘
 ---
 
 ## Changelog
+
+### v0.4.4
+- **`public/` 자동 생성 분기 보강** — 이전엔 `vite.config.*` 파일 존재만 봐서, vite deps 는 있지만 config 파일을 만들지 않은 프로젝트가 "plain SPA" 로 잘못 판정되어 reporter 가 루트에 복사되고 vite 가 404 로 서빙 실패. 이제 `package.json` 의 `vite` / `next` / `@remix-run/*` deps 도 검사해서 framework 프로젝트면 `public/` 자동 생성 후 복사
 
 ### v0.4.3
 - **`client-error-reporter.js` 를 현대 JS 로 재작성** — `var` → `const`, `function () {}` → `arrow function`, `x && x.y` → `x?.y`, empty catch 블록에 주석 추가. biome strict 룰을 **기본 통과**하도록 정비. 이전 버전에서 reporter 사본이 프로젝트에 배포되면 사용자의 biome 이 자기 preset 으로 lint 해서 실패하던 순환 제거
