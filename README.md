@@ -185,16 +185,36 @@ runtime-auto-fix 돌려줘
 
 ---
 
-## Stack
+## Prerequisites
 
-- **[Biome](https://biomejs.dev) 2.x** — 린터 + 포맷터 통합 도구. ESLint + Prettier 를 Rust 기반 단일 바이너리로 대체 · 이 플러그인은 프로젝트 유형을 감지해 `base` / `react` / `strict` 3종 preset 중 **최적을 자동 선택**하고 `biome.json extends` 를 자동 구성
-- **[husky](https://typicode.github.io/husky) 9.x** — git hook 관리 · `pre-commit` 에 `pnpm run check` 주입
-- **TypeScript 5.x** — `tsc --noEmit` 으로 타입 체크 (린트와 분리되어 이중 안전망)
-- **tsx** — 가벼운 dev 실행 런타임 (Node 기반 프로젝트용, 프레임워크 dev server 도 래핑 가능)
-- **Python 3** — 브라우저 에러 receiver 실행 (`http.server` 표준 라이브러리만 사용, 추가 pip 설치 불필요)
-- **pnpm** — 패키지 매니저 (기본, npm / yarn / bun 현재 미지원)
+사용자가 사전에 준비해야 할 것 — 플러그인은 이것들을 **설치하지 않음**.
+
 - **Node.js 18+**
+- **pnpm** — 현재 래퍼 스크립트가 pnpm 전제 (npm / yarn / bun 미지원)
+- **Python 3** — 브라우저 에러 receiver 용 (stdlib 만 사용, pip 설치 불필요)
+- **git** — 저장소로 초기화된 프로젝트
+- **dev server / bundler** — Vite · Next.js · Remix · Astro · Express · NestJS · 순수 Node 스크립트 등 **사용자가 직접 선택·설치**. 플러그인은 bundler/framework 를 선택하거나 설치하지 않고, 이미 존재하는 dev 환경 위에 harness 레이어만 덮음.
+- **TypeScript** (있으면 typecheck 동작, 없어도 lint + runtime 캡처는 가능)
 - **Claude Code** — 플러그인 호스트
+
+## What the plugin installs
+
+`/vibe-check-mate:setup` 실행 시 자동 추가:
+
+| 자산 | 목적 |
+|------|------|
+| `@biomejs/biome` (devDep) | Rust 기반 린터/포맷터 — ESLint + Prettier 통합 대체. 프로젝트 유형 감지해 `base` / `react` / `strict` 중 **최적 preset 자동 선택** |
+| `husky` (devDep) | git hook 관리 |
+| `biome-config/biome.{base,react,strict}.json` | 3 종 preset 템플릿 |
+| `biome.json` | 감지된 preset 으로 `extends` 구성된 루트 설정 |
+| `.husky/pre-commit` | `pnpm run check` 를 실행하는 hook |
+| `scripts/run-static-check-with-logs.sh` | lint + typecheck 래퍼 (`.check-static/` 생성) |
+| `scripts/dev-runtime.sh` | dev server 래퍼 (auto-kill + receiver 기동) |
+| `scripts/client-error-receiver.py` | Python 3 HTTP 서버, 브라우저 에러 수신 |
+| `scripts/client-error-reporter.js` | 브라우저용 에러 리포터 (localhost 한정, 프로덕션 no-op) |
+| `public/client-error-reporter.js` 또는 루트 | 웹에서 서빙되는 reporter 위치 (v0.4.5 의 publicDir 감지 결과에 따라 배치) |
+| `package.json` scripts | `lint` · `lint:fix` · `typecheck` · `check` · `dev` · `dev:raw` · `prepare` 추가/재정렬 |
+| `index.html` 등 entry 파일 | `<script src="/client-error-reporter.js">` 자동 주입 (v0.4.1 의 framework 감지 결과에 따라) |
 
 ---
 
