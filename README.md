@@ -53,10 +53,12 @@ AI 코딩에서 가장 피곤한 순간은 "수정했습니다" 다음입니다.
 
 ```md
 코드 작업 완료 후 반드시 `pnpm run check`를 실행한다.
-실패하면 `.check-static/AGENT_ACTION_REQUIRED.md`를 먼저 읽고 `static-auto-fix`를 실행한다.
-정적 검사가 통과하면 필요한 경우 `pnpm run dev`로 런타임을 검증한다.
-`.check-runtime/AGENT_ACTION_REQUIRED.md`가 생성되면 먼저 읽고 `runtime-auto-fix`를 실행한다.
-runtime fix 후에는 `pnpm run dev` clean restart와 `pnpm run check` static gate가 모두 통과해야 완료로 보고한다.
+실패하면 `.check-static/AGENT_ACTION_REQUIRED.md`를 먼저 읽는다. 이 파일의 지시에 따라 `static-auto-fix`를 실행한다.
+정적 검사가 통과하면 development 변경과 static-fix 변경을 분할 커밋하고 사용자 `Y` 승인 후 push한다.
+그 다음 `pnpm run dev`로 런타임을 검증한다.
+`.check-runtime/AGENT_ACTION_REQUIRED.md`가 생성되면 먼저 읽는다. 이 파일의 지시에 따라 `runtime-auto-fix`를 실행한다.
+runtime fix 후에는 `pnpm run dev` clean restart와 `pnpm run check` static gate를 모두 통과해야 한다.
+runtime 검증 단계에서 생긴 static 수정은 runtime-fix bucket에 포함하고, 사용자 `Y` 승인 후 runtime-fix 커밋을 push한다.
 ```
 
 그 다음부터는 사용자가 매번 에러 로그를 붙여넣을 필요가 없습니다.
@@ -64,16 +66,22 @@ runtime fix 후에는 `pnpm run dev` clean restart와 `pnpm run check` static ga
 ```text
 AI 개발 완료
 → pnpm run check
-→ static 실패면 static-auto-fix
-→ pnpm run dev
-→ runtime 실패면 runtime-auto-fix
+→ static 실패면 .check-static/AGENT_ACTION_REQUIRED.md 읽기
+→ static-auto-fix
+→ pnpm run check 재검증
+→ development + static-fix 분할 커밋 제안
+→ 사용자 Y 승인 후 push
+→ pnpm run dev 런타임 검증
+→ runtime 실패면 .check-runtime/AGENT_ACTION_REQUIRED.md 읽기
+→ runtime-auto-fix
 → runtime fix
 → pnpm run dev clean restart
 → pnpm run check static gate
 → static 실패면 static-auto-fix runtime-handoff
 → 다시 pnpm run dev clean restart
 → full green
-→ split commit plan
+→ runtime-fix 커밋 제안
+→ 사용자 Y 승인 후 push
 ```
 
 ---
@@ -90,7 +98,10 @@ flowchart TD
   E --> F["Minimal static fix"]
   F --> B
 
-  C -->|Yes| G["Run pnpm run dev when runtime verification is needed"]
+  C -->|Yes| G0["Static green"]
+  G0 --> G1["Split commit plan:<br/>existing / development / static-fix"]
+  G1 --> G2["User approval: Y / 수정 / N"]
+  G2 --> G["Run pnpm run dev for runtime verification"]
   G --> H["dev-runtime.sh live evidence mode"]
   H --> I["server stdout/stderr → runtime.log"]
   H --> J["auto-pick receiver port<br/>write client-error-endpoint.json"]
@@ -113,9 +124,9 @@ flowchart TD
   V --> W["static-auto-fix runtime-handoff mode"]
   W --> Q
 
-  U -->|Yes| X["Full verification passed"]
+  U -->|Yes| X["Runtime full verification passed"]
   M --> X
-  X --> Y["Split commit plan: existing / development / static-fix / runtime-fix"]
+  X --> Y["Runtime-fix commit plan<br/>includes runtime static handoff changes"]
   Y --> Z["User approval: Y / 수정 / N"]
 ```
 
