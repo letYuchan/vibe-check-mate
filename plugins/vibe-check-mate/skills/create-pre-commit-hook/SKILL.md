@@ -1,6 +1,6 @@
 ---
 name: create-pre-commit-hook
-description: pnpm + husky 기반으로 biome lint와 TypeScript typecheck를 커밋 전에 강제하고, 실패 시 최신 정적 분석 오류 상태를 .check-static/에 기록하는 pre-commit hook을 설정한다.
+description: pnpm + husky 기반으로 프로젝트의 lint와 typecheck를 커밋 전에 강제하고, 실패 시 최신 정적 분석 오류 상태를 .check-static/에 기록하는 pre-commit hook을 설정한다.
 ---
 
 # 목적
@@ -14,7 +14,7 @@ description: pnpm + husky 기반으로 biome lint와 TypeScript typecheck를 커
 
 # 사전 조건
 - pnpm, git, package.json이 존재한다.
-- biome.json, tsconfig.json이 존재한다.
+- package.json에 `lint`와 `typecheck` 스크립트가 존재한다.
 - scripts/run-static-check-with-logs.sh가 존재한다.
 
 # 절차
@@ -25,10 +25,9 @@ pnpm dlx husky init
 
 ## 2. package.json scripts 추가
 scripts:
-  lint: biome lint . --max-diagnostics=1000
-  lint:fix: biome lint --write . --max-diagnostics=1000
-  typecheck: tsc --noEmit
   check: bash ./scripts/run-static-check-with-logs.sh
+
+`lint`와 `typecheck`는 기존 프로젝트 설정을 사용한다. 없으면 임의로 추가하지 말고, 사용자가 먼저 정적 검사 도구를 설정하도록 안내한다.
 
 ## 3. 스크립트 실행 권한 설정
 chmod +x scripts/run-static-check-with-logs.sh
