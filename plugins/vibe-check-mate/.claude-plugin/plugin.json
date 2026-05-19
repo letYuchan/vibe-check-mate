@@ -1,7 +1,7 @@
 {
   "name": "vibe-check-mate",
-  "version": "0.4.6",
-  "description": "Vibe-check your AI-assisted code: lint/typecheck logging, runtime error capture, and AI auto-fix. Bundles husky pre-commit with .check-static logging, dev runtime capture to .check-runtime, and Claude skills that apply minimal fixes from those states.",
+  "version": "0.6.0",
+  "description": "Vibe-check your AI-assisted code automatically: static action files, live runtime evidence, runtime-to-static handoff, full verification gates, and split commit proposals. Bundles husky pre-commit, .check-static/.check-runtime source-of-truth logs, and Claude skills that fix errors without repeated user prompts.",
   "author": {
     "name": "letYuchan"
   },

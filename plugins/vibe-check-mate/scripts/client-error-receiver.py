@@ -2,7 +2,7 @@
 """vibe-check-mate client error receiver.
 
 Listens on localhost for POSTed browser errors from client-error-reporter.js
-and appends them to .check-runtime/runtime.log so the existing auto-kill
+and appends them to .check-runtime/runtime.log so the runtime evidence
 watcher and runtime-auto-fix skill can treat them identically to server
 errors.
 
@@ -50,13 +50,39 @@ class Handler(http.server.BaseHTTPRequestHandler):
             col = payload.get("col") or "?"
             stack = (payload.get("stack") or "").replace("\n", " / ")
             url = payload.get("url") or ""
+            network = payload.get("network") or {}
 
             with open(LOG_FILE, "a", encoding="utf-8") as f:
-                f.write(
-                    f"[CLIENT_ERROR] kind={kind} msg={msg} at {file_}:{line}:{col} url={url}\n"
-                )
-                if stack:
-                    f.write(f"[CLIENT_STACK] {stack}\n")
+                if kind in {"network", "network-error"}:
+                    method = network.get("method") or "?"
+                    status = network.get("status")
+                    duration = network.get("duration_ms")
+                    request_url = network.get("url") or ""
+                    transport = network.get("transport") or "?"
+                    failed = network.get("failed") or False
+                    request_body = json.dumps(
+                        network.get("request_body"), ensure_ascii=False, sort_keys=True
+                    )
+                    request_headers = json.dumps(
+                        network.get("request_headers") or {},
+                        ensure_ascii=False,
+                        sort_keys=True,
+                    )
+                    f.write(
+                        f"[CLIENT_NETWORK] transport={transport} failed={failed} method={method} "
+                        f"status={status} duration_ms={duration} url={request_url} page={url}\n"
+                    )
+                    f.write(f"[CLIENT_NETWORK_HEADERS] {request_headers}\n")
+                    f.write(f"[CLIENT_NETWORK_BODY] {request_body}\n")
+                    message = network.get("message")
+                    if message:
+                        f.write(f"[CLIENT_NETWORK_MESSAGE] {message}\n")
+                else:
+                    f.write(
+                        f"[CLIENT_ERROR] kind={kind} msg={msg} at {file_}:{line}:{col} url={url}\n"
+                    )
+                    if stack:
+                        f.write(f"[CLIENT_STACK] {stack}\n")
         except Exception:
             pass
 

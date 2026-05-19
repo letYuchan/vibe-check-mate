@@ -1,5 +1,5 @@
 ---
-description: vibe-check-mate 하네스를 현재 프로젝트에 구성한다 (husky pre-commit + static logs + dev runtime 캡처).
+description: vibe-check-mate 하네스를 현재 프로젝트에 구성한다 (husky pre-commit + static action file + live runtime evidence).
 ---
 
 # vibe-check-mate · setup
@@ -65,6 +65,12 @@ chmod +x scripts/run-static-check-with-logs.sh scripts/dev-runtime.sh
 ## 4. Dev runtime 캡처 연결 (`runtime-auto-fix` 스킬 세팅 룰 참조)
 - 기존 `scripts.dev`가 있으면 `scripts.dev:raw`로 이동 (단 `dev:raw`가 이미 있으면 덮어쓰지 않음).
 - `scripts.dev` ← `"bash ./scripts/dev-runtime.sh"`.
+- 기본 runtime mode는 live evidence mode다. 에러가 발생해도 dev server를 종료하지 않고 `.check-runtime/first-error.log`와 `.check-runtime/AGENT_ACTION_REQUIRED.md`를 생성한다.
+- 첫 runtime failure 파일 목록은 `.check-runtime/runtime-fix-files.txt`에 보존된다.
+- runtime fix 이후 static gate가 실패하면 `.check-runtime/static-gate-error-files.txt`를 보존하고 `static-auto-fix` runtime-handoff mode로 넘긴다.
+- 브라우저 receiver 포트는 기본 `9876`부터 사용 가능한 포트를 자동 탐색한다.
+- 선택된 receiver endpoint는 reporter가 있는 웹 루트의 `client-error-endpoint.json`에 기록한다.
+- 기존 auto-kill 방식이 필요하면 사용자가 `VIBE_DEV_AUTOKILL=1 pnpm run dev`로 opt-in한다.
 
 ## 4-B. 브라우저 에러 reporter 자동 주입 (framework 감지)
 
@@ -132,16 +138,51 @@ Edit 직후 같은 파일을 다시 Read:
 > reporter 는 `localhost` / `127.0.0.1` 접속 시에만 동작. 프로덕션 번들에서는 no-op.
 
 ## 5. 검증
-- `pnpm run check`를 실행해 lint/typecheck 통과 시 `.check-static/`이 생성되지 않는지 확인.
-- 실패 케이스를 일부러 유도해 `.check-static/{lint.log, typecheck.log, error-files.txt}` 3개가 생성되는지 확인.
-- `.gitignore`에 `.check-static/`, `.check-runtime/` 추가 권장.
+
+### Static gate
+- `bash -n scripts/run-static-check-with-logs.sh`가 통과해야 한다.
+- `pnpm run check`를 실행해 lint/typecheck 통과 시 `.check-static/`이 생성되지 않는지 확인한다.
+- 현재 프로젝트가 이미 static 실패 상태라면 setup을 실패로 보지 않는다. 대신 `.check-static/{lint.log,typecheck.log,error-files.txt,AGENT_ACTION_REQUIRED.md}`가 생성됐는지 확인하고 `static-auto-fix` 실행 안내를 보고한다.
+- setup 검증을 위해 프로젝트 소스에 일부러 lint/typecheck 오류를 주입하지 않는다.
+
+### Runtime evidence
+- `bash -n scripts/dev-runtime.sh`가 통과해야 한다.
+- `scripts/dev-runtime.sh` 안에 다음 파일 상수가 존재해야 한다:
+  - `.check-runtime/first-error.log`
+  - `.check-runtime/error-signature.txt`
+  - `.check-runtime/source-context.md`
+  - `.check-runtime/runtime-fix-files.txt`
+  - `.check-runtime/static-gate-error-files.txt`
+  - `.check-runtime/AGENT_ACTION_REQUIRED.md`
+- `scripts/dev-runtime.sh` 안에 `client-error-endpoint.json` 생성 흐름이 있어야 한다.
+- `pnpm run dev`는 기본적으로 dev server를 종료하지 않는 live evidence mode여야 한다.
+- 기본 receiver port가 사용 중이면 다음 포트를 자동 선택하고 `client-error-endpoint.json`에 반영해야 한다.
+- runtime auto-kill은 기본값이 아니며 `VIBE_DEV_AUTOKILL=1`일 때만 opt-in이어야 한다.
+- runtime fix 완료 조건은 `pnpm run dev` clean restart + `pnpm run check` static gate 통과임을 보고한다.
+- runtime fix 후 static gate 실패 시 `static-auto-fix` runtime-handoff mode → runtime clean restart 재검증 흐름을 보고한다.
+
+### Browser reporter
+- `node --check scripts/client-error-reporter.js`가 통과해야 한다.
+- `python3 -m py_compile scripts/client-error-receiver.py`가 통과해야 한다. 단, `python3`가 없으면 브라우저 reporter 수신 검증을 skip하고 이유를 보고한다.
+- reporter 자동 주입에 실패하거나 skip된 경우 수동 삽입 스니펫과 정확한 이유를 보고한다.
+
+### Git ignore
+- `.gitignore`에 `.check-static/`, `.check-runtime/`이 없으면 기존 내용을 보존하고 누락 항목만 추가한다.
+- `.gitignore`에 `client-error-endpoint.json`이 없으면 기존 내용을 보존하고 추가한다.
+- `.gitignore` 기존 항목을 삭제하거나 재정렬하지 않는다.
 
 ## 6. 보고 포맷
 아래 항목을 요약:
 - 새로 생성된 파일 목록 (`path`)
 - 설치된 husky 버전
 - 기존 파일 유지 여부와 이유
+- `.gitignore` 생성/보정 여부
+- static gate 검증 결과
+- runtime evidence 검증 결과
+- browser reporter 주입/검증 결과
 - 다음 사용 가이드:
   - 커밋이 lint/typecheck로 차단되면 → `static-auto-fix` 스킬 호출
-  - dev 서버(서버사이드 에러) 또는 브라우저(클라이언트 에러)에서 런타임 에러 발생하면 → `runtime-auto-fix` 스킬 호출
+  - dev 서버 또는 브라우저 런타임 에러가 발생하면 → `.check-runtime/first-error.log`를 근거로 `runtime-auto-fix` 스킬 호출
+  - runtime fix 후에는 `pnpm run dev` clean restart와 `pnpm run check` static gate를 모두 통과해야 커밋 제안 가능
+  - runtime fix 후 static gate가 실패하면 → `static-auto-fix`를 먼저 완료한 뒤 runtime clean restart 재검증
 - 브라우저 에러 reporter 주입 여부와 권장 스니펫을 별도 섹션으로 명시
